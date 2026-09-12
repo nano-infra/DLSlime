@@ -2,6 +2,8 @@
 
 import torch
 
+from dlslime.runtime import Memory
+
 
 class GrowableBuffer:
     """Pinned CPU buffer that doubles when capacity is exceeded.
@@ -22,6 +24,9 @@ class GrowableBuffer:
         self._name = name
         self.handler: int = -1  # MR handler id from RDMA registration
         self._buf = torch.empty(initial_size, dtype=torch.int8, pin_memory=True)
+        # Backend registration remains a compatibility execution detail.
+        # Memory is the stable owner of the current buffer generation.
+        self.memory = Memory.from_buffer(self._buf)
         self._register()
 
     # ── Public ───────────────────────────────────────
@@ -40,6 +45,7 @@ class GrowableBuffer:
             return
         new_size = max(needed, self._buf.numel() * 2)
         self._buf = torch.empty(new_size, dtype=torch.int8, pin_memory=True)
+        self.memory = Memory.from_buffer(self._buf)
         self._register()
 
     # ── Internal ─────────────────────────────────────

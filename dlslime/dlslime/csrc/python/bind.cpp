@@ -52,6 +52,7 @@
 // Forward declaration: cache bindings live in a separate translation
 // unit (cache/bindings.cpp) so they can be developed independently.
 void bind_cache(pybind11::module_& m);
+void bind_memory(pybind11::module_& m);
 
 // Ops moved to NanoCCL - these includes are commented out
 // #if defined(BUILD_INTRA_OPS) || defined(BUILD_INTER_OPS)
@@ -109,6 +110,7 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(_slime_c, m)
 {
+    bind_memory(m);
     EXPOSE_BUILD_FLAG(m, BUILD_RDMA);
     EXPOSE_BUILD_FLAG(m, BUILD_NVLINK);
     EXPOSE_BUILD_FLAG(m, BUILD_INTRA_OPS);
@@ -483,6 +485,11 @@ PYBIND11_MODULE(_slime_c, m)
             py::arg("length"),
             py::arg("name") = py::none(),
             py::call_guard<py::gil_scoped_release>())
+        .def("register_memory",
+             &dlslime::NVLinkEndpoint::register_memory,
+             py::arg("memory"),
+             py::arg("name") = py::none(),
+             py::call_guard<py::gil_scoped_release>())
         .def(
             "register_fabric_memory_region",
             [](dlslime::NVLinkEndpoint& self, const json& mr_info, py::object name_obj) {
