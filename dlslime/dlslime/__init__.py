@@ -2,6 +2,7 @@ from ._slime_c import *
 import os
 
 from .logging import get_logger, set_log_level
+from .runtime import Memory, MemoryView
 
 try:
     from .peer_agent import PeerAgent, start_peer_agent

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DLSlime 3.0 — Layered communication runtime</title>
+  <style>
+    :root { color-scheme: light; font: 14px/1.5 system-ui, -apple-system, sans-serif; color: #23364c; background: #f8fafc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px; }
+    main { max-width: 1360px; margin: auto; }
+    header { display: flex; align-items: center; gap: 12px; margin: 0 8px 12px; }
+    header img { width: 36px; height: 36px; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: -.4px; }
+    header p { margin: 0; color: #68798c; font-size: 12px; }
+    figure { margin: 0; overflow-x: auto; }
+    svg { display: block; width: 100%; min-width: 760px; height: auto; }
+    .group rect { fill: #eff4fa; stroke: #cbd6e4; stroke-width: 1.4; }
+    .group text { font-size: 15px; font-weight: 650; fill: #445c76; }
+    .abstractions rect { fill: #eff9f5; stroke: #bfdccf; }
+    .control rect { fill: #fff3e0; stroke: #ef6c00; stroke-width: 2; }
+    .control text { fill: #92551c; }
+    .execution rect { fill: #f1effb; stroke: #cec6e7; }
+    .node rect { fill: #fff; stroke: #bbcbdc; stroke-width: 1.4; }
+    .node text { font-size: 16px; font-weight: 600; fill: #253c54; }
+    .node .subtitle { font-size: 13px; font-weight: 400; fill: #667b91; }
+    .agent rect { fill: #dcefe5; stroke: #5d9d7f; stroke-width: 1.8; }
+    .control-node rect { stroke: #d6ad79; fill: #fffdf9; }
+    .registry rect { fill: #ffe0b2; stroke: #ef6c00; stroke-width: 2; }
+    .topology rect { fill: #eaf4fc; stroke: #8eabc4; }
+    .engine rect { fill: #e6e1f6; stroke: #a395c7; }
+    .observability rect { fill: #f3f0f9; stroke: #a498bc; stroke-dasharray: 6 4; }
+    .edge { fill: none; stroke: #5c7087; stroke-width: 1.7; stroke-linejoin: round; }
+    .observation { stroke: #9387ae; stroke-dasharray: 6 5; stroke-width: 1.5; }
+    figcaption { margin: 10px 8px 0; display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 12px; color: #64758a; }
+    .sample { display: inline-block; width: 26px; margin-right: 8px; vertical-align: middle; border-top: 2px solid #5c7087; }
+    .sample.dashed { border-top: 2px dashed #9387ae; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="nanoengine-logo.svg" alt="NanoEngine logo" width="36" height="36">
+    <div><h1>DLSlime 3.0</h1><p>A layered communication runtime</p></div>
+  </header>
+  <figure>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 944" role="img" aria-labelledby="diagram-title diagram-description">
+<title id="diagram-title">DLSlime layered communication runtime</title>
+<desc id="diagram-description">The original roadmap graph: five applications target Agent; Agent exposes Memory, Operation, Future, Stream / Event and connects to PeerAgent. PeerAgent and dlslime-ctrl communicate bidirectionally. dlslime-ctrl supplies identity, then discovery, then Topology. Memory, Operation, Future, Stream / Event and Topology directly feed Transfer Engine. Transfer Engine drives execution substrates. Dashed edges from Control Plane, Topology, Transfer Engine, Future and execution substrates lead to Observability.</desc>
+<defs>
+<marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#5c7087"/></marker>
+<marker id="observe-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#9387ae"/></marker>
+</defs>
+<g id="APP" class="group applications" data-group="APP"><rect x="28" y="24" width="1122" height="132" rx="18"/><text x="48" y="49">Inference engines and services</text></g>
+<g id="API" class="group abstractions" data-group="API"><rect x="28" y="180" width="690" height="234" rx="18"/><text x="48" y="205">Unified communication abstractions</text></g>
+<g id="CTRL" class="group control" data-group="CTRL"><rect x="780" y="180" width="370" height="454" rx="18"/><text x="800" y="205">Control Plane · dlslime-ctrl</text></g>
+<g id="DATA" class="group execution" data-group="DATA"><rect x="190" y="635" width="460" height="133" rx="18"/><text x="210" y="660">Data / Execution Plane</text></g>
+<g id="relations">
+<path class="edge" data-from="A1" data-to="AG" data-relation="-->" d="M137 130 V168 H402 V208" marker-end="url(#arrow)"/>
+<path class="edge" data-from="A2" data-to="AG" data-relation="-->" d="M347 130 V160 H428 V208" marker-end="url(#arrow)"/>
+<path class="edge" data-from="A3" data-to="AG" data-relation="-->" d="M557 130 V172 H454 V208" marker-end="url(#arrow)"/>
+<path class="edge" data-from="A4" data-to="AG" data-relation="-->" d="M767 130 V166 H480 V208" marker-end="url(#arrow)"/>
+<path class="edge" data-from="A5" data-to="AG" data-relation="-->" d="M1006 130 V174 H506 V208" marker-end="url(#arrow)"/>
+<path class="edge" data-from="AG" data-to="MM" data-relation="-->" d="M402 268 V290 H132 V330" marker-end="url(#arrow)"/>
+<path class="edge" data-from="AG" data-to="OP" data-relation="-->" d="M432 268 V308 H292 V330" marker-end="url(#arrow)"/>
+<path class="edge" data-from="AG" data-to="FU" data-relation="-->" d="M474 268 V300 H452 V330" marker-end="url(#arrow)"/>
+<path class="edge" data-from="AG" data-to="SE" data-relation="-->" d="M514 268 V290 H612 V330" marker-end="url(#arrow)"/>
+<path class="edge" data-from="AG" data-to="PA" data-relation="-->" d="M542 236 H748 V246 H823" marker-end="url(#arrow)"/>
+<path class="edge" data-from="PA" data-to="NC" data-relation="<-->" d="M965 277 V316" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<path class="edge" data-from="NC" data-to="ID" data-relation="-->" d="M965 378 V417" marker-end="url(#arrow)"/>
+<path class="edge" data-from="ID" data-to="DISC" data-relation="-->" d="M965 479 V518" marker-end="url(#arrow)"/>
+<path class="edge" data-from="DISC" data-to="TO" data-relation="-->" d="M965 580 V670" marker-end="url(#arrow)"/>
+<path class="edge" data-from="OP" data-to="TR" data-relation="-->" d="M292 386 V560 H380 V670" marker-end="url(#arrow)"/>
+<path class="edge" data-from="FU" data-to="TR" data-relation="-->" d="M452 386 V570 H460 V670" marker-end="url(#arrow)"/>
+<path class="edge" data-from="SE" data-to="TR" data-relation="-->" d="M612 386 V602 H540 V670" marker-end="url(#arrow)"/>
+<path class="edge" data-from="MM" data-to="TR" data-relation="-->" d="M132 386 V602 H300 V670" marker-end="url(#arrow)"/>
+<path class="edge" data-from="TO" data-to="TR" data-relation="-->" d="M815 704 H590" marker-end="url(#arrow)"/>
+<path class="edge" data-from="TR" data-to="X" data-relation="-->" d="M420 738 V815" marker-end="url(#arrow)"/>
+<path class="edge observation" data-from="CTRL" data-to="OBS" data-relation="-.->" d="M1150 500 H1175 V864 H1120" marker-end="url(#observe-arrow)"/>
+<path class="edge observation" data-from="TO" data-to="OBS" data-relation="-.->" d="M1105 704 H1140 V795 H1060 V810" marker-end="url(#observe-arrow)"/>
+<path class="edge observation" data-from="TR" data-to="OBS" data-relation="-.->" d="M590 724 H680 V916 H885 V884" marker-end="url(#observe-arrow)"/>
+<path class="edge observation" data-from="FU" data-to="OBS" data-relation="-.->" d="M490 386 V450 H742 V782 H920 V810" marker-end="url(#observe-arrow)"/>
+<path class="edge observation" data-from="X" data-to="OBS" data-relation="-.->" d="M590 850 H780" marker-end="url(#observe-arrow)"/>
+</g>
+<g id="A1" class="node " data-node="A1" transform="translate(48 78)"><rect width="178" height="52" rx="12"/><text x="89" y="31" text-anchor="middle">LMDeploy</text></g>
+<g id="A2" class="node " data-node="A2" transform="translate(258 78)"><rect width="178" height="52" rx="12"/><text x="89" y="31" text-anchor="middle">DLEngine</text></g>
+<g id="A3" class="node " data-node="A3" transform="translate(468 78)"><rect width="178" height="52" rx="12"/><text x="89" y="31" text-anchor="middle">SlimeRPC</text></g>
+<g id="A4" class="node " data-node="A4" transform="translate(678 78)"><rect width="178" height="52" rx="12"/><text x="89" y="31" text-anchor="middle">DLSlimeCache</text></g>
+<g id="A5" class="node " data-node="A5" transform="translate(888 78)"><rect width="238" height="52" rx="12"/><text x="119" y="25" text-anchor="middle">Custom communication</text><text class="subtitle" x="119" y="46" text-anchor="middle">operators</text></g>
+<g id="AG" class="node agent" data-node="AG" transform="translate(386 208)"><rect width="156" height="60" rx="12"/><text x="78" y="35" text-anchor="middle">Agent</text></g>
+<g id="MM" class="node " data-node="MM" transform="translate(60 330)"><rect width="144" height="56" rx="12"/><text x="72" y="33" text-anchor="middle">Memory</text></g>
+<g id="OP" class="node " data-node="OP" transform="translate(220 330)"><rect width="144" height="56" rx="12"/><text x="72" y="33" text-anchor="middle">Operation</text></g>
+<g id="FU" class="node " data-node="FU" transform="translate(380 330)"><rect width="144" height="56" rx="12"/><text x="72" y="33" text-anchor="middle">Future</text></g>
+<g id="SE" class="node " data-node="SE" transform="translate(540 330)"><rect width="144" height="56" rx="12"/><text x="72" y="33" text-anchor="middle">Stream / Event</text></g>
+<g id="PA" class="node control-node" data-node="PA" transform="translate(823 215)"><rect width="284" height="62" rx="12"/><text x="142" y="25" text-anchor="middle">PeerAgent</text><text class="subtitle" x="142" y="46" text-anchor="middle">node-side agent</text></g>
+<g id="NC" class="node registry" data-node="NC" transform="translate(823 316)"><rect width="284" height="62" rx="12"/><text x="142" y="25" text-anchor="middle">dlslime-ctrl</text><text class="subtitle" x="142" y="46" text-anchor="middle">registry and coordination</text></g>
+<g id="ID" class="node control-node" data-node="ID" transform="translate(823 417)"><rect width="284" height="62" rx="12"/><text x="142" y="36" text-anchor="middle">Peer and service identity</text></g>
+<g id="DISC" class="node control-node" data-node="DISC" transform="translate(823 518)"><rect width="284" height="62" rx="12"/><text x="142" y="36" text-anchor="middle">Discovery and lifecycle</text></g>
+<g id="TO" class="node topology" data-node="TO" transform="translate(815 670)"><rect width="290" height="68" rx="12"/><text x="145" y="25" text-anchor="middle">Topology</text><text class="subtitle" x="145" y="46" text-anchor="middle">shared runtime context</text></g>
+<g id="TR" class="node engine" data-node="TR" transform="translate(250 670)"><rect width="340" height="68" rx="12"/><text x="170" y="39" text-anchor="middle">Transfer Engine</text></g>
+<g id="X" class="node substrates" data-node="X" transform="translate(250 815)"><rect width="340" height="68" rx="12"/><text x="170" y="25" text-anchor="middle">Execution substrates</text><text class="subtitle" x="170" y="46" text-anchor="middle">devices · links · fabrics</text></g>
+<g id="OBS" class="node observability" data-node="OBS" transform="translate(780 810)"><rect width="340" height="74" rx="12"/><text x="170" y="25" text-anchor="middle">Observability</text><text class="subtitle" x="170" y="46" text-anchor="middle">metrics · traces · diagnostics</text></g>
+</svg>
+    <figcaption><span><span class="sample"></span>Directed relationship · two arrowheads indicate bidirectional exchange</span><span><span class="sample dashed"></span>Observability relationship</span></figcaption>
+  </figure>
+</main>
+</body>
+</html>

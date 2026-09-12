@@ -50,15 +50,26 @@ class CacheService:
         self.peer_agent = peer_agent
         self.cache_mr_name = cache_mr_name
         self.cache_storage = None
+        self.cache_memory = None
         self.cache_mr_handle = None
         if self.peer_agent is not None and memory_size > 0:
             self.cache_storage = ctypes.create_string_buffer(memory_size)
-            self.cache_mr_handle = self.peer_agent.register_memory_region(
-                self.cache_mr_name,
-                ctypes.addressof(self.cache_storage),
-                0,
-                memory_size,
-            )
+            # Cache owns the storage; PeerAgent only creates backend bindings.
+            from dlslime.runtime import Memory
+
+            self.cache_memory = Memory.from_buffer(self.cache_storage)
+            register_memory = getattr(self.peer_agent, "register_memory", None)
+            if register_memory is not None:
+                self.cache_mr_handle = register_memory(
+                    self.cache_mr_name, self.cache_memory
+                )
+            else:
+                self.cache_mr_handle = self.peer_agent.register_memory_region(
+                    self.cache_mr_name,
+                    self.cache_memory.address,
+                    0,
+                    self.cache_memory.length,
+                )
 
     @property
     def slab_size(self) -> int:

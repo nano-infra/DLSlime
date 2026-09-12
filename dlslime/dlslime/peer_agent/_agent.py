@@ -16,7 +16,7 @@ import threading
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
@@ -49,6 +49,7 @@ except ImportError:  # pragma: no cover - build without NVLink
 
 from dlslime.ctrl import NanoCtrlClient
 from dlslime.logging import get_logger
+from dlslime.runtime import Memory, MemoryRegistry
 from ._mailbox import StreamMailbox
 from ._obs import _tlog
 
@@ -151,6 +152,9 @@ class LogicalMemoryRegion:
     dmabuf_fd: Optional[int] = None
     iova: Optional[int] = None
     owns_fd: bool = False
+    # Canonical runtime description. The legacy fields remain as an adapter
+    # until backend materialization is moved behind Memory.
+    memory: Optional[Memory] = field(default=None, compare=False, repr=False)
 
 
 @dataclass
@@ -420,6 +424,7 @@ class PeerAgent:
             Tuple[str, ResourceKey], MaterializedMemoryRegion
         ] = {}
         self._regions_lock = threading.Lock()
+        self._memory_registry = MemoryRegistry()
 
         # CUDA Fabric allocations are owned independently of per-peer endpoints
         # so caches can be allocated before the first connection is created.
@@ -1285,13 +1290,43 @@ class PeerAgent:
             conn.attach_endpoint(new_ep, pool)
             return new_ep
 
+    def _memory_bindings(self) -> MemoryRegistry:
+        registry = getattr(self, "_memory_registry", None)
+        if registry is None:
+            registry = self._memory_registry = MemoryRegistry()
+        return registry
+
     def _register_nvlink_region(self, endpoint, region: LogicalMemoryRegion) -> int:
         owned = self._owned_memory_regions.get(region.name)
+        backend = ("nvlink", id(endpoint))
         if owned is not None:
-            return endpoint.register_fabric_memory_region(owned[3], region.name)
-        return endpoint.register_memory_region(
-            region.ptr, region.offset, region.length, region.name
+            binding = self._memory_bindings().bind(
+                region.memory,
+                backend,
+                lambda: endpoint.register_fabric_memory_region(owned[3], region.name),
+                release=endpoint.unregister_memory_region,
+            )
+        else:
+            binding = self._memory_bindings().bind(
+                region.memory,
+                backend,
+                lambda: endpoint.register_memory_region(
+                    region.ptr, region.offset, region.length, region.name
+                ),
+                release=endpoint.unregister_memory_region,
+            )
+        return int(binding.handle)
+
+    def _register_tcp_region(self, endpoint, region: LogicalMemoryRegion) -> int:
+        binding = self._memory_bindings().bind(
+            region.memory,
+            ("tcp", id(endpoint)),
+            lambda: endpoint.register_memory_region(
+                region.name, region.ptr, region.offset, region.length
+            ),
+            release=getattr(endpoint, "unregister_memory_region", None),
         )
+        return int(binding.handle)
 
     def _ensure_local_nvlink_endpoint(self, conn_id: str, conn: DirectedConnection):
         if _NVLinkEndpoint is None:
@@ -1758,6 +1793,12 @@ class PeerAgent:
     # ------------------------------------------------------------------
     # Memory region registration
     # ------------------------------------------------------------------
+    def register_memory(self, mr_name: str, memory: Memory) -> int:
+        """Register a first-class Memory; legacy pointer APIs remain adapters."""
+        if not isinstance(memory, Memory):
+            raise TypeError("memory must be a dlslime.runtime.Memory")
+        return self.register_memory_region(mr_name, memory.address, 0, memory.length)
+
     def register_memory_region(
         self,
         mr_name: str,
@@ -1775,6 +1816,9 @@ class PeerAgent:
         ``conn.endpoint.register_memory_region`` for one-sided ops.
         """
         region = LogicalMemoryRegion(mr_name, ptr, offset, length)
+        region.memory = Memory.from_address(
+            int(ptr), int(offset) + int(length), owner=region
+        )
         with self._regions_lock:
             self._logical_regions[mr_name] = region
 
@@ -1797,7 +1841,7 @@ class PeerAgent:
                 if endpoint_conn.transport == "nvlink":
                     nvlink_handle = self._register_nvlink_region(ep, region)
                 else:
-                    ep.register_memory_region(mr_name, ptr, offset, length)
+                    self._register_tcp_region(ep, region)
             except Exception as e:
                 logger.warning(
                     "PeerAgent %s: endpoint MR replay for %s failed: %s",
@@ -1849,6 +1893,9 @@ class PeerAgent:
             dmabuf_fd=owned_fd,
             iova=iova,
             owns_fd=True,
+        )
+        region.memory = Memory.from_address(
+            int(iova), int(length), owner=region, memory_kind="dmabuf"
         )
         try:
             with self._regions_lock:
@@ -1939,18 +1986,18 @@ class PeerAgent:
                     raise RuntimeError(
                         "underlying memory pool does not support unregister"
                     )
-                rc = pool.unregister_memory_region(region.handler)
-                if rc != 0:
-                    raise RuntimeError(
-                        "underlying memory pool returned "
-                        f"{rc} for handle {region.handler}"
-                    )
+                self._memory_bindings().release(
+                    logical_region.memory, ("rdma", region.resource_key)
+                )
+                rc = 0
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to unregister memory region {mr_name!r} on "
                     f"{region.resource_key}: {e}"
                 ) from e
 
+        if logical_region is not None:
+            self._memory_bindings().release_memory(logical_region.memory)
         with self._regions_lock:
             self._logical_regions.pop(mr_name, None)
             for region in materialized:
@@ -2015,17 +2062,24 @@ class PeerAgent:
         if region.dmabuf_fd is not None:
             if region.iova is None:
                 raise RuntimeError(f"DMA-BUF region {mr_name!r} has no IOVA")
-            handler = pool.register_dmabuf_memory_region(
-                region.dmabuf_fd,
-                region.offset,
-                region.length,
-                region.iova,
-                mr_name,
+            binding = self._memory_bindings().bind(
+                region.memory,
+                ("rdma", key),
+                lambda: pool.register_dmabuf_memory_region(
+                    region.dmabuf_fd, region.offset, region.length, region.iova, mr_name
+                ),
+                release=pool.unregister_memory_region,
             )
         else:
-            handler = pool.register_memory_region(
-                region.ptr, region.length + region.offset, mr_name
+            binding = self._memory_bindings().bind(
+                region.memory,
+                ("rdma", key),
+                lambda: pool.register_memory_region(
+                    region.ptr, region.length + region.offset, mr_name
+                ),
+                release=pool.unregister_memory_region,
             )
+        handler = int(binding.handle)
         mr_info = pool.mr_info()[mr_name]
 
         # Write directly to Redis (p2p, no HTTP)

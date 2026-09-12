@@ -9,6 +9,7 @@
 #include "cuda_common.cuh"
 #include "dlslime/csrc/engine/assignment.h"
 #include "dlslime/csrc/logging.h"
+#include "dlslime/csrc/runtime/memory.h"
 #include "memory_pool.h"
 #include "nvlink_future.h"
 
@@ -144,6 +145,14 @@ public:
                                    std::optional<std::string> name = std::nullopt)
     {
         return memory_pool_.register_memory_region(addr, offset, length, name);
+    }
+
+    int32_t register_memory(const std::shared_ptr<runtime::Memory>& memory,
+                            std::optional<std::string>              name = std::nullopt)
+    {
+        if (!memory)
+            throw std::invalid_argument("Memory must not be null");
+        return register_memory_region(memory->address(), 0, memory->length(), name);
     }
 
     int32_t register_remote_memory_region(const json& mr_info, std::optional<std::string> name = std::nullopt)

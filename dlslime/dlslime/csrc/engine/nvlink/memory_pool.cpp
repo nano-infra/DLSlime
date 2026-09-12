@@ -108,6 +108,10 @@ int32_t NVLinkMemoryPool::register_memory_region(uintptr_t                  addr
                                                  size_t                     length,
                                                  std::optional<std::string> name)
 {
+    // CUDA IPC handles are created in the owning device context.  The
+    // endpoint's device must therefore be active even when the caller has
+    // changed the process-wide current device since allocation.
+    active_device();
     if (ptr_to_handle_.count(addr)) {
         int32_t handle = ptr_to_handle_[addr];
         if (name.has_value()) {
@@ -278,6 +282,9 @@ int32_t NVLinkMemoryPool::register_remote_memory_region(const json& mr_info, std
         mr.owns_allocation = true;
     }
     else {
+        // cudaIpcOpenMemHandle must run in the importing endpoint's device
+        // context, not whichever device happened to be current in Python.
+        active_device();
         char* remote_ptr = nullptr;
         for (int i = 0; i < CUDA_IPC_HANDLE_SIZE; ++i)
             mr.ipc_handle.reserved[i] = mr_info.at("ipc_handle").at(i).get<char>();

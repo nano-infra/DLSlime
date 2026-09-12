@@ -130,6 +130,7 @@ nav:
       - DLSlimeCache: design/dlslime-cache.md
       - Endpoint Ownership: design/endpoint-ownership-model.md
       - Endpoint DeviceSignal Refactor: design/endpoint-device-signal-refactor.md
+      - Runtime API Contract: design/runtime-api-contract.md
   - Platform:
       - Overview: platform/index.md
       - Huawei Ascend: platform/huawei-ascend.md
